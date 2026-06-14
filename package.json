@@ -1,0 +1,15 @@
+{
+  "name": "koala-tamagotchi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev --prefix web",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:watch": "vitest --config vitest.config.mjs",
+    "lint": "npx -y prettier --check shared/ web/src/"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
