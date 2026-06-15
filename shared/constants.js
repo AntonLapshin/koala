@@ -23,8 +23,8 @@ export const STUNTED_HUNGER_THRESHOLD = 30;
 export const STUNTED_JOY_THRESHOLD = 30;
 export const NEGLECT_THRESHOLD = 50;
 
-export const DAILY_SICKNESS_CHANCE = 0.9;
-export const NEGLECT_SICKNESS_CHANCE = 0.7;
+export const DAILY_SICKNESS_CHANCE = 0.2;
+export const NEGLECT_SICKNESS_CHANCE = 0.5;
 
 export const DEATH_ZERO_STAT_SECONDS = 172800;
 

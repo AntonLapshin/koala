@@ -272,7 +272,7 @@ describe("gameEngine", () => {
         totalLifetimeSteps: 100,
         lastSaveTimestamp: BASE_TIME - DEATH_ZERO_STAT_SECONDS * SECOND,
         zeroStatSeconds: DEATH_ZERO_STAT_SECONDS - 1,
-        lastSicknessCheckDate: "2026-06-12",
+        lastSicknessCheckDate: "2026-06-14",
       });
       const a = createAdapter({ savedState: saved });
       const engine = makeEngine(a);
@@ -290,7 +290,7 @@ describe("gameEngine", () => {
         totalLifetimeSteps: 100 * STEPS_PER_COIN,
         lastSaveTimestamp: BASE_TIME - DEATH_ZERO_STAT_SECONDS * SECOND,
         zeroStatSeconds: DEATH_ZERO_STAT_SECONDS - 1,
-        lastSicknessCheckDate: "2026-06-12",
+        lastSicknessCheckDate: "2026-06-14",
       });
       const a = createAdapter({ savedState: saved });
       const engine = makeEngine(a);

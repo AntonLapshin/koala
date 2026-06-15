@@ -152,7 +152,6 @@ export function createGameEngine({ storage, getTime, getSteps }) {
     state.todayStepCount = 0;
     state.lastStepDate = todayDate;
     state.tapCounter = 0;
-    state.lastSicknessCheckDate = todayDate;
   }
 
   function checkSicknessToday(todayDate) {
