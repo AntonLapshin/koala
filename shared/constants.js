@@ -26,4 +26,6 @@ export const NEGLECT_THRESHOLD = 20;
 export const DAILY_SICKNESS_CHANCE = 0.1;
 export const NEGLECT_SICKNESS_CHANCE = 0.5;
 
-export const DEATH_ZERO_STAT_HOURS = 48;
+export const DEATH_ZERO_STAT_SECONDS = 172800;
+
+export const TICK_INTERVAL_MS = 5000;

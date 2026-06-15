@@ -1,23 +1,32 @@
-import { setStorageSync, getStorageSync } from '@zos/storage';
+import { statSync, writeFileSync, readFileSync } from '@zos/fs';
 
-const STORAGE_KEY = 'koala_state';
+const FILE_NAME = 'koala_data.txt';
 
 export const storageAdapter = {
   load() {
     try {
-      const raw = getStorageSync(STORAGE_KEY);
+      const fStat = statSync({ path: FILE_NAME });
+      if (!fStat) return null;
+
+      const raw = readFileSync({
+        path: FILE_NAME,
+        options: { encoding: 'utf8' },
+      });
       if (!raw) return null;
+
       return JSON.parse(raw);
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   },
 
   save(state) {
     try {
-      setStorageSync(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      // Silently fail on storage errors
-    }
+      writeFileSync({
+        path: FILE_NAME,
+        data: JSON.stringify(state),
+        options: { encoding: 'utf8' },
+      });
+    } catch (_) {}
   },
 };

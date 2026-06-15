@@ -1,6 +1,7 @@
 import hmUI from "@zos/ui";
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../utils/constants.js";
 import { createGameEngine } from "../shared/gameEngine.js";
+import { TICK_INTERVAL_MS } from "../shared/constants.js";
 import { storageAdapter } from "../utils/storageAdapter.js";
 import { sensorAdapter } from "../utils/sensorAdapter.js";
 import { timeAdapter } from "../utils/timeAdapter.js";
@@ -9,6 +10,24 @@ import { Vibrator } from "@zos/sensor";
 let engine = null;
 let _vib = null;
 let _widgets = [];
+let _tickTimer = null;
+
+function startTickTimer(page) {
+  if (_tickTimer) return;
+  _tickTimer = setInterval(() => {
+    if (!engine) return;
+    engine.resume();
+    page.render();
+  }, TICK_INTERVAL_MS);
+}
+
+function stopTickTimer() {
+  if (_tickTimer) {
+    clearInterval(_tickTimer);
+    _tickTimer = null;
+  }
+}
+
 function vibrate() {
   if (!_vib) {
     try {
@@ -24,7 +43,7 @@ function vibrate() {
 
 const KOALA_W = 224;
 const KOALA_H = 300;
-const OVERLAY_COLOR = 0x8C222222;
+const OVERLAY_COLOR = 0x8c222222;
 
 function getHeartSrc(state) {
   if (state.health === "dead") return "ui/heart_dead.png";
@@ -40,20 +59,25 @@ Page({
       getSteps: sensorAdapter.getSteps,
     });
     engine.init();
+    startTickTimer(this);
     this.render();
   },
 
   onResume() {
-    engine = createGameEngine({
-      storage: storageAdapter,
-      getTime: timeAdapter.getTime,
-      getSteps: sensorAdapter.getSteps,
-    });
-    engine.init();
+    if (engine) {
+      engine.resume();
+    }
+    startTickTimer(this);
     this.render();
   },
 
+  onPause() {
+    stopTickTimer();
+    if (engine) engine.save();
+  },
+
   onDestroy() {
+    stopTickTimer();
     if (engine) engine.save();
   },
 
@@ -305,9 +329,9 @@ Page({
       );
     }
 
-    const showFood = state.hunger < 100;
+    const showFood = Math.round(state.hunger) < 100;
     const showMedicine = isSick;
-    const showToy = state.joy < 100;
+    const showToy = Math.round(state.joy) < 100;
     const visible = [showFood, showMedicine, showToy].filter(Boolean).length;
     const btnW = Math.floor((width - (visible + 1) * 8) / Math.max(visible, 1));
     const btnH = 56;

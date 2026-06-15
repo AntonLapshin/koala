@@ -3,6 +3,10 @@ import { createGameEngine } from './gameEngine.js';
 import {
   HUNGER_MAX,
   JOY_MAX,
+  HUNGER_DECAY_PER_HOUR,
+  HUNGER_DECAY_PER_HOUR_SICK,
+  JOY_DECAY_PER_HOUR,
+  JOY_DECAY_PER_HOUR_SICK,
   STORE_FOOD_COST,
   STORE_TOY_COST,
   STORE_MEDICINE_COST,
@@ -13,7 +17,7 @@ import {
   PET_HUNGER_BONUS,
   PET_JOY_BONUS,
   SICK_PET_TAPS_TO_CURE,
-  DEATH_ZERO_STAT_HOURS,
+  DEATH_ZERO_STAT_SECONDS,
 } from './constants.js';
 
 function createMockStorage(initial = null) {
@@ -25,9 +29,11 @@ function createMockStorage(initial = null) {
 }
 
 const BASE_TIME = new Date('2026-06-14T12:00:00Z').getTime();
+const SECOND = 1000;
 const HOUR = 60 * 60 * 1000;
 
 function makeSaved(overrides = {}) {
+  const ts = overrides.lastSaveTimestamp !== undefined ? overrides.lastSaveTimestamp : BASE_TIME;
   return {
     hunger: HUNGER_MAX,
     joy: JOY_MAX,
@@ -39,10 +45,11 @@ function makeSaved(overrides = {}) {
     totalLifetimeSteps: 0,
     todayStepCount: 0,
     lastStepDate: '2026-06-14',
-    lastSaveTimestamp: BASE_TIME,
+    lastDecayTimestamp: overrides.lastDecayTimestamp !== undefined ? overrides.lastDecayTimestamp : ts,
+    lastSaveTimestamp: ts,
     sickDayCount: 0,
     tapCounter: 0,
-    zeroStatHours: 0,
+    zeroStatSeconds: 0,
     lastSicknessCheckDate: '2026-06-14',
     ...overrides,
   };
@@ -86,9 +93,9 @@ describe('gameEngine', () => {
         age: 3,
         coins: 5,
         coinsSpent: 0,
-        totalLifetimeSteps: 500,
-        todayStepCount: 100,
-        lastSaveTimestamp: BASE_TIME - 2 * HOUR,
+        totalLifetimeSteps: 5 * STEPS_PER_COIN,
+        todayStepCount: 0,
+        lastSaveTimestamp: BASE_TIME - 2 * SECOND,
       });
       const a = createAdapter({ savedState: saved });
       const engine = makeEngine(a);
@@ -99,13 +106,13 @@ describe('gameEngine', () => {
 
     it('applies time decay when restoring saved state', () => {
       const saved = makeSaved({
-        lastSaveTimestamp: BASE_TIME - 10 * HOUR,
+        lastSaveTimestamp: BASE_TIME - 1 * HOUR,
       });
       const a = createAdapter({ savedState: saved });
       const engine = makeEngine(a);
       const state = engine.getState();
-      expect(state.hunger).toBe(100 - 10 * 2);
-      expect(state.joy).toBe(100 - 10 * 3);
+      expect(state.hunger).toBe(HUNGER_MAX - 1 * HUNGER_DECAY_PER_HOUR);
+      expect(state.joy).toBe(JOY_MAX - 1 * JOY_DECAY_PER_HOUR);
     });
   });
 
@@ -243,16 +250,16 @@ describe('gameEngine', () => {
   });
 
   describe('death', () => {
-    it('sets health to dead after 48 hours at zero stats', () => {
+    it('sets health to dead after zero stat seconds', () => {
       const saved = makeSaved({
         hunger: 0,
         joy: 0,
         age: 10,
         coins: 100,
         coinsSpent: 0,
-        totalLifetimeSteps: 10000,
-        lastSaveTimestamp: BASE_TIME - DEATH_ZERO_STAT_HOURS * HOUR,
-        zeroStatHours: DEATH_ZERO_STAT_HOURS - 1,
+        totalLifetimeSteps: 100,
+        lastSaveTimestamp: BASE_TIME - DEATH_ZERO_STAT_SECONDS * SECOND,
+        zeroStatSeconds: DEATH_ZERO_STAT_SECONDS - 1,
         lastSicknessCheckDate: '2026-06-12',
       });
       const a = createAdapter({ savedState: saved });
@@ -268,9 +275,9 @@ describe('gameEngine', () => {
         age: 10,
         coins: 100,
         coinsSpent: 0,
-        totalLifetimeSteps: 10000,
-        lastSaveTimestamp: BASE_TIME - DEATH_ZERO_STAT_HOURS * HOUR,
-        zeroStatHours: DEATH_ZERO_STAT_HOURS - 1,
+        totalLifetimeSteps: 100 * STEPS_PER_COIN,
+        lastSaveTimestamp: BASE_TIME - DEATH_ZERO_STAT_SECONDS * SECOND,
+        zeroStatSeconds: DEATH_ZERO_STAT_SECONDS - 1,
         lastSicknessCheckDate: '2026-06-12',
       });
       const a = createAdapter({ savedState: saved });
@@ -288,9 +295,9 @@ describe('gameEngine', () => {
         age: 10,
         coins: 100,
         coinsSpent: 0,
-        totalLifetimeSteps: 10000,
+        totalLifetimeSteps: 100,
         lastSaveTimestamp: BASE_TIME,
-        zeroStatHours: DEATH_ZERO_STAT_HOURS,
+        zeroStatSeconds: DEATH_ZERO_STAT_SECONDS,
         lastSicknessCheckDate: '2026-06-14',
       });
       const a = createAdapter({ savedState: saved });
@@ -307,9 +314,9 @@ describe('gameEngine', () => {
         age: 10,
         coins: 100,
         coinsSpent: 0,
-        totalLifetimeSteps: 10000,
+        totalLifetimeSteps: 100,
         lastSaveTimestamp: BASE_TIME,
-        zeroStatHours: DEATH_ZERO_STAT_HOURS,
+        zeroStatSeconds: DEATH_ZERO_STAT_SECONDS,
         lastSicknessCheckDate: '2026-06-14',
       });
       const a = createAdapter({ savedState: saved });
@@ -326,9 +333,9 @@ describe('gameEngine', () => {
         age: 10,
         coins: 100,
         coinsSpent: 0,
-        totalLifetimeSteps: 10000,
+        totalLifetimeSteps: 100,
         lastSaveTimestamp: BASE_TIME,
-        zeroStatHours: DEATH_ZERO_STAT_HOURS,
+        zeroStatSeconds: DEATH_ZERO_STAT_SECONDS,
         lastSicknessCheckDate: '2026-06-14',
       });
       const a = createAdapter({ savedState: saved });
@@ -345,13 +352,13 @@ describe('gameEngine', () => {
     it('sick state doubles decay rate', () => {
       const saved = makeSaved({
         health: 'sick',
-        lastSaveTimestamp: BASE_TIME - 10 * HOUR,
+        lastSaveTimestamp: BASE_TIME - 1 * HOUR,
       });
       const a = createAdapter({ savedState: saved });
       const engine = makeEngine(a);
       const state = engine.getState();
-      expect(state.hunger).toBe(100 - 10 * 4);
-      expect(state.joy).toBe(100 - 10 * 6);
+      expect(state.hunger).toBe(HUNGER_MAX - 1 * HUNGER_DECAY_PER_HOUR_SICK);
+      expect(state.joy).toBe(JOY_MAX - 1 * JOY_DECAY_PER_HOUR_SICK);
     });
   });
 });
