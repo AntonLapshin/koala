@@ -1,17 +1,37 @@
 import hmUI from "@zos/ui";
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../utils/constants.js";
 import { createGameEngine } from "../shared/gameEngine.js";
-import { TICK_INTERVAL_MS } from "../shared/constants.js";
+import {
+  TICK_INTERVAL_MS,
+  CRITICAL_HUNGER_THRESHOLD,
+  CRITICAL_JOY_THRESHOLD,
+  NOTIFY_COOLDOWN_MS,
+  STORE_FOOD_COST,
+  STORE_TOY_COST,
+  STORE_MEDICINE_COST,
+} from "../shared/constants.js";
 import { storageAdapter } from "../utils/storageAdapter.js";
 import { sensorAdapter } from "../utils/sensorAdapter.js";
 import { timeAdapter } from "../utils/timeAdapter.js";
 import { Vibrator } from "@zos/sensor";
 import { setEngine } from "../shared/engineRegistry.js";
+import { formatDate } from "../utils/formatDate.js";
+import { getTimeOfDay } from "../utils/getTimeOfDay.js";
+import { getWeather } from "../utils/getWeather.js";
+import { getHeartSrc } from "../utils/getHeartSrc.js";
+import { getBgSrc } from "../utils/getBgSrc.js";
+import { isCriticalStatus } from "../utils/isCriticalStatus.js";
+import { getNotificationMessage } from "../utils/getNotificationMessage.js";
 
 let engine = null;
 let _vib = null;
 let _widgets = [];
 let _tickTimer = null;
+let _lastNotifyTime = 0;
+let _showNotify = false;
+let _notifyMessage = "";
+let _showStats = false;
+let _page = null;
 
 function startTickTimer(page) {
   if (_tickTimer) return;
@@ -46,14 +66,215 @@ const KOALA_W = 224;
 const KOALA_H = 300;
 const OVERLAY_COLOR = 0x8c222222;
 
-function getHeartSrc(state) {
-  if (state.health === "dead") return "ui/heart_dead.png";
-  if (state.health === "sick") return "ui/heart_sick.png";
-  return "ui/heart_health.png";
+function addRectWrapper(x, y, w, h, clickHandler) {
+  const rect = hmUI.createWidget(hmUI.widget.FILL_RECT, {
+    x,
+    y,
+    w,
+    h,
+    radius: 14,
+    color: OVERLAY_COLOR,
+  });
+  if (clickHandler) {
+    rect.addEventListener(hmUI.event.CLICK_DOWN, clickHandler);
+  }
+  _widgets.push(rect);
+  return rect;
+}
+
+function addStoreItem(x, y, w, h, iconSrc, price, clickHandler) {
+  addRectWrapper(x, y, w, h, clickHandler);
+
+  const iconSize = 28;
+  const coinSize = 14;
+  const textW = 30;
+  const gap = 8;
+  const totalW = iconSize + gap + textW + gap + coinSize;
+  const startX = x + Math.floor((w - totalW) / 2);
+  const rowY = y + Math.floor((h - iconSize) / 2);
+  const coinY = rowY + Math.floor((iconSize - coinSize) / 2);
+
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.IMG, {
+      x: startX,
+      y: rowY,
+      w: iconSize,
+      h: iconSize,
+      src: iconSrc,
+    }),
+  );
+
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.TEXT, {
+      x: startX + iconSize + gap,
+      y: rowY,
+      w: textW,
+      h: iconSize,
+      text: String(price),
+      text_size: 20,
+      color: 0xffffff,
+      align_v: hmUI.align.CENTER_V,
+    }),
+  );
+
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.IMG, {
+      x: startX + iconSize + gap + textW,
+      y: coinY,
+      w: coinSize,
+      h: coinSize,
+      src: "ui/coin.png",
+    }),
+  );
+}
+
+function addProgressBar(x, y, value) {
+  const pct = Math.max(0, Math.min(100, value));
+  const fillW = Math.round((pct / 100) * 62);
+  let color;
+  if (pct > 70) {
+    color = 0x00ff00;
+  } else if (pct > 40) {
+    color = 0xc25a2b;
+  } else {
+    color = 0xff0000;
+  }
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x,
+      y,
+      w: 62,
+      h: 22,
+      color: 0xffffff,
+      radius: 4,
+    }),
+  );
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: x + 3,
+      y: y + 2,
+      w: Math.max(0, fillW - 6),
+      h: 18,
+      color,
+      radius: 3,
+    }),
+  );
+}
+
+function checkCriticalNotification(state, nowMs) {
+  if (state.health === "dead") {
+    _showNotify = false;
+    return;
+  }
+
+  if (
+    !isCriticalStatus(state, CRITICAL_HUNGER_THRESHOLD, CRITICAL_JOY_THRESHOLD)
+  ) {
+    _showNotify = false;
+    return;
+  }
+
+  if (nowMs - _lastNotifyTime < NOTIFY_COOLDOWN_MS) return;
+
+  _lastNotifyTime = nowMs;
+  _showNotify = true;
+  _notifyMessage = getNotificationMessage(
+    state,
+    CRITICAL_HUNGER_THRESHOLD,
+    CRITICAL_JOY_THRESHOLD,
+  );
+
+  vibrate();
+}
+
+function renderStatsScreen(state, width, height) {
+  const panelX = 25;
+  const panelY = 50;
+  const panelW = 340;
+  const panelH = 350;
+  const radius = 20;
+
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: panelX,
+      y: panelY,
+      w: panelW,
+      h: panelH,
+      radius,
+      color: 0xee1a1a2e,
+    }),
+  );
+
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.TEXT, {
+      x: panelX,
+      y: panelY + 14,
+      w: panelW,
+      h: 36,
+      text: "Koala Stats",
+      text_size: 22,
+      color: 0xffffff,
+      align_h: hmUI.align.CENTER_H,
+    }),
+  );
+
+  const coinsEarned = state.coins + state.coinsSpent;
+  const lines = [
+    `Days Alive:      ${state.age}`,
+    `Coins Earned:  ${coinsEarned}`,
+    `Coins Spent:    ${state.coinsSpent}`,
+    `Food Given:     ${state.totalFoodBought || 0}`,
+    `Toys Played:    ${state.totalToysBought || 0}`,
+    `Cured:            ${state.totalMedicineBought || 0}`,
+    `Sick Days:      ${state.sickDayCount}`,
+    `Steps:          ${state.totalLifetimeSteps + state.todayStepCount}`,
+  ];
+
+  const lineH = 28;
+  const startY = panelY + 66;
+
+  lines.forEach((line, i) => {
+    _widgets.push(
+      hmUI.createWidget(hmUI.widget.TEXT, {
+        x: panelX + 20,
+        y: startY + i * lineH,
+        w: panelW - 40,
+        h: lineH,
+        text: line,
+        text_size: 19,
+        color: 0xdddddd,
+        align_h: hmUI.align.LEFT,
+        align_v: hmUI.align.CENTER_V,
+      }),
+    );
+  });
+
+  const btnW = 160;
+  const btnH = 46;
+
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.BUTTON, {
+      x: Math.floor((width - btnW) / 2),
+      y: panelY + panelH - btnH - 12,
+      w: btnW,
+      h: btnH,
+      text: "Back",
+      radius: 20,
+      color: 0xffffff,
+      normal_color: 0x4caf50,
+      text_size: 22,
+      press_color: 0x2e7d32,
+      click_func: () => {
+        _showStats = false;
+        _page && _page.render();
+      },
+    }),
+  );
 }
 
 Page({
   build() {
+    _page = this;
     engine = createGameEngine({
       storage: storageAdapter,
       getTime: timeAdapter.getTime,
@@ -88,9 +309,19 @@ Page({
     const { width, height } = { width: DEVICE_WIDTH, height: DEVICE_HEIGHT };
     const isDead = state.health === "dead";
     const isSick = state.health === "sick";
+    const nowMs = timeAdapter.getTime();
+    const hour = new Date(nowMs).getHours();
+    const todayDate = formatDate(new Date(nowMs));
+    const timeOfDay = getTimeOfDay(hour);
+    const weather = getWeather(todayDate);
 
     _widgets.forEach((w) => hmUI.deleteWidget(w));
     _widgets = [];
+
+    if (_showStats && !isDead) {
+      renderStatsScreen(state, width, height);
+      return;
+    }
 
     _widgets.push(
       hmUI.createWidget(hmUI.widget.IMG, {
@@ -98,9 +329,23 @@ Page({
         y: 0,
         w: width,
         h: height,
-        src: "bg.png",
+        src: getBgSrc(timeOfDay),
       }),
     );
+
+    if (weather === "rain") {
+      _widgets.push(
+        hmUI.createWidget(hmUI.widget.IMG, {
+          x: 0,
+          y: 0,
+          w: width,
+          h: height,
+          src: "bg_rain.png",
+        }),
+      );
+    }
+
+    checkCriticalNotification(state, nowMs);
 
     const imageSrc =
       state.age === 0
@@ -171,11 +416,46 @@ Page({
           press_color: 0x2e7d32,
           click_func: () => {
             engine.reset();
+            _showStats = false;
+            _showNotify = false;
+            _lastNotifyTime = 0;
             this.render();
           },
         }),
       );
       return;
+    }
+
+    if (_showNotify) {
+      const notifyW = width - 40;
+      const notifyH = 34;
+      const notifyX = 20;
+      const notifyY = 68;
+
+      _widgets.push(
+        hmUI.createWidget(hmUI.widget.FILL_RECT, {
+          x: notifyX,
+          y: notifyY,
+          w: notifyW,
+          h: notifyH,
+          radius: 10,
+          color: 0xccb71c1c,
+        }),
+      );
+
+      _widgets.push(
+        hmUI.createWidget(hmUI.widget.TEXT, {
+          x: notifyX,
+          y: notifyY,
+          w: notifyW,
+          h: notifyH,
+          text: `! ${_notifyMessage}`,
+          text_size: 18,
+          color: 0xffdddd,
+          align_h: hmUI.align.CENTER_H,
+          align_v: hmUI.align.CENTER_V,
+        }),
+      );
     }
 
     const hungerPct = Math.round(state.hunger);
@@ -200,19 +480,7 @@ Page({
         src: "ui/food.png",
       }),
     );
-    _widgets.push(
-      hmUI.createWidget(hmUI.widget.TEXT, {
-        x: 86,
-        y: 30,
-        w: 62,
-        h: 58,
-        text: `${hungerPct}%`,
-        text_size: 24,
-        color: 0xffffff,
-        align_h: hmUI.align.LEFT,
-        align_v: hmUI.align.CENTER_V,
-      }),
-    );
+    addProgressBar(86, 48, hungerPct);
 
     _widgets.push(
       hmUI.createWidget(hmUI.widget.FILL_RECT, {
@@ -233,19 +501,8 @@ Page({
         src: "ui/toy.png",
       }),
     );
-    _widgets.push(
-      hmUI.createWidget(hmUI.widget.TEXT, {
-        x: 86,
-        y: 94,
-        w: 62,
-        h: 58,
-        text: `${joyPct}%`,
-        text_size: 24,
-        color: 0xffffff,
-        align_h: hmUI.align.LEFT,
-        align_v: hmUI.align.CENTER_V,
-      }),
-    );
+
+    addProgressBar(86, 112, joyPct);
 
     const heartX = Math.floor((width - 52) / 2);
     const heartImg = hmUI.createWidget(hmUI.widget.IMG, {
@@ -264,41 +521,28 @@ Page({
       }
     });
 
-    _widgets.push(
-      hmUI.createWidget(hmUI.widget.FILL_RECT, {
-        x: width - 114,
-        y: 28,
-        w: 82,
-        h: 68,
-        radius: 14,
-        color: OVERLAY_COLOR,
-      }),
-    );
-    _widgets.push(
-      hmUI.createWidget(hmUI.widget.TEXT, {
-        x: width - 114,
-        y: 30,
-        w: 82,
-        h: 28,
-        text: "Age",
-        text_size: 18,
-        color: 0xaaaaaa,
-        align_h: hmUI.align.CENTER_H,
-      }),
-    );
-    _widgets.push(
-      hmUI.createWidget(hmUI.widget.TEXT, {
-        x: width - 114,
-        y: 56,
-        w: 82,
-        h: 36,
-        text: `${state.age}`,
-        text_size: 28,
-        color: 0xffffff,
-        align_h: hmUI.align.CENTER_H,
-        align_v: hmUI.align.CENTER_V,
-      }),
-    );
+    const ageBtnW = 82;
+    const ageBtnH = 68;
+    const ageBtnX = width - 114;
+    const ageBtnY = 28;
+
+    const ageBtn = hmUI.createWidget(hmUI.widget.BUTTON, {
+      x: ageBtnX,
+      y: ageBtnY,
+      w: ageBtnW,
+      h: ageBtnH,
+      text: `Age ${state.age}`,
+      radius: 14,
+      color: 0xffffff,
+      normal_color: OVERLAY_COLOR,
+      text_size: 24,
+      press_color: 0xaa444444,
+      click_func: () => {
+        _showStats = true;
+        this.render();
+      },
+    });
+    _widgets.push(ageBtn);
 
     _widgets.push(
       hmUI.createWidget(hmUI.widget.FILL_RECT, {
@@ -359,70 +603,36 @@ Page({
 
     if (showFood) {
       const x = 8 + btnIdx * (btnW + 8);
-      _widgets.push(
-        hmUI.createWidget(hmUI.widget.BUTTON, {
-          x,
-          y: btnY,
-          w: btnW,
-          h: btnH,
-          text: `Food 10`,
-          radius: 14,
-          color: 0xffffff,
-          normal_color: 0x4caf50,
-          text_size: 22,
-          press_color: 0x2e7d32,
-          click_func: () => {
-            if (engine.buy("food")) vibrate();
-            this.render();
-          },
-        }),
-      );
+      addStoreItem(x, btnY, btnW, btnH, "ui/food.png", STORE_FOOD_COST, () => {
+        if (engine.buy("food")) vibrate();
+        this.render();
+      });
       btnIdx++;
     }
 
     if (showMedicine) {
       const x = 8 + btnIdx * (btnW + 8);
-      _widgets.push(
-        hmUI.createWidget(hmUI.widget.BUTTON, {
-          x,
-          y: btnY,
-          w: btnW,
-          h: btnH,
-          text: `Med 30`,
-          radius: 14,
-          color: 0xffffff,
-          normal_color: 0xf44336,
-          text_size: 22,
-          press_color: 0xc62828,
-          click_func: () => {
-            if (engine.buy("medicine")) vibrate();
-            this.render();
-          },
-        }),
+      addStoreItem(
+        x,
+        btnY,
+        btnW,
+        btnH,
+        "ui/medicine.png",
+        STORE_MEDICINE_COST,
+        () => {
+          if (engine.buy("medicine")) vibrate();
+          this.render();
+        },
       );
       btnIdx++;
     }
 
     if (showToy) {
       const x = 8 + btnIdx * (btnW + 8);
-      _widgets.push(
-        hmUI.createWidget(hmUI.widget.BUTTON, {
-          x,
-          y: btnY,
-          w: btnW,
-          h: btnH,
-          text: `Toy 10`,
-          radius: 14,
-          color: 0xffffff,
-          normal_color: 0x2196f3,
-          text_size: 22,
-          press_color: 0x1565c0,
-          click_func: () => {
-            if (engine.buy("toy")) vibrate();
-            this.render();
-          },
-        }),
-      );
+      addStoreItem(x, btnY, btnW, btnH, "ui/toy.png", STORE_TOY_COST, () => {
+        if (engine.buy("toy")) vibrate();
+        this.render();
+      });
       btnIdx++;
     }
   },

@@ -59,6 +59,9 @@ function makeSaved(overrides = {}) {
     tapCounter: 0,
     zeroStatSeconds: 0,
     lastSicknessCheckDate: "2026-06-14",
+    totalFoodBought: 0,
+    totalToysBought: 0,
+    totalMedicineBought: 0,
     ...overrides,
   };
 }

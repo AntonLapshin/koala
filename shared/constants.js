@@ -13,7 +13,7 @@ export const STORE_TOY_JOY = 30;
 export const STORE_MEDICINE_COST = 30;
 
 export const STEPS_PER_COIN = 100;
-export const PET_TAPS_FOR_BONUS = 10;
+export const PET_TAPS_FOR_BONUS = 30;
 export const PET_HUNGER_BONUS = 1;
 export const PET_JOY_BONUS = 1;
 export const SICK_PET_TAPS_TO_CURE = 100;
@@ -27,5 +27,9 @@ export const DAILY_SICKNESS_CHANCE = 0.2;
 export const NEGLECT_SICKNESS_CHANCE = 0.5;
 
 export const DEATH_ZERO_STAT_SECONDS = 172800;
+
+export const CRITICAL_HUNGER_THRESHOLD = 20;
+export const CRITICAL_JOY_THRESHOLD = 20;
+export const NOTIFY_COOLDOWN_MS = 300000;
 
 export const TICK_INTERVAL_MS = 5000;

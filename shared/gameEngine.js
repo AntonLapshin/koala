@@ -23,40 +23,10 @@ import {
   NEGLECT_SICKNESS_CHANCE,
   DEATH_ZERO_STAT_SECONDS,
 } from "./constants.js";
-
-function getTodayDate(getTime) {
-  const d = new Date(getTime());
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function randomEggIndex() {
-  return Math.floor(Math.random() * MAX_AGE) + 1;
-}
-
-function createDefaultState() {
-  return {
-    hunger: HUNGER_MAX,
-    joy: JOY_MAX,
-    health: "normal",
-    age: 0,
-    eggIndex: randomEggIndex(),
-    coins: 0,
-    coinsSpent: 0,
-    totalLifetimeSteps: 0,
-    todayStepCount: 0,
-    lastStepDate: "",
-    lastDecayTimestamp: 0,
-    lastSaveTimestamp: 0,
-    sickDayCount: 0,
-    tapCounter: 0,
-    zeroStatSeconds: 0,
-    lastSicknessCheckDate: "",
-  };
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
+import { clamp } from "../utils/clamp.js";
+import { formatDate } from "../utils/formatDate.js";
+import { createDefaultState } from "../utils/createDefaultState.js";
+import { calculateRemainingCoins } from "../utils/calculateCoins.js";
 
 export function createGameEngine({ storage, getTime, getSteps }) {
   let state = null;
@@ -72,14 +42,17 @@ export function createGameEngine({ storage, getTime, getSteps }) {
       if (state.lastDecayTimestamp == null) {
         state.lastDecayTimestamp = state.lastSaveTimestamp;
       }
+      if (state.totalFoodBought == null) state.totalFoodBought = 0;
+      if (state.totalToysBought == null) state.totalToysBought = 0;
+      if (state.totalMedicineBought == null) state.totalMedicineBought = 0;
       applyTimeDecay();
     } else {
       state = createDefaultState();
       const now = getTime();
       state.lastDecayTimestamp = now;
       state.lastSaveTimestamp = now;
-      state.lastStepDate = getTodayDate(getTime);
-      state.lastSicknessCheckDate = getTodayDate(getTime);
+      state.lastStepDate = formatDate(new Date(getTime()));
+      state.lastSicknessCheckDate = formatDate(new Date(getTime()));
     }
     syncSteps();
     save();
@@ -99,8 +72,8 @@ export function createGameEngine({ storage, getTime, getSteps }) {
 
     if (elapsedSeconds <= 0) return;
 
-    const todayDate = getTodayDate(getTime);
-    const prevDate = getTodayDate(() => state.lastDecayTimestamp);
+    const todayDate = formatDate(new Date(getTime()));
+    const prevDate = formatDate(new Date(state.lastDecayTimestamp));
 
     if (todayDate !== prevDate) {
       handleDailyReset(todayDate, prevDate);
@@ -195,7 +168,7 @@ export function createGameEngine({ storage, getTime, getSteps }) {
   }
 
   function syncSteps() {
-    const todayDate = getTodayDate(getTime);
+    const todayDate = formatDate(new Date(getTime()));
 
     if (state.lastStepDate !== todayDate) {
       state.totalLifetimeSteps += state.todayStepCount;
@@ -242,12 +215,14 @@ export function createGameEngine({ storage, getTime, getSteps }) {
         state.coins -= STORE_FOOD_COST;
         state.coinsSpent += STORE_FOOD_COST;
         state.hunger = clamp(state.hunger + STORE_FOOD_HUNGER, 0, HUNGER_MAX);
+        state.totalFoodBought = (state.totalFoodBought || 0) + 1;
         break;
       case "toy":
         if (state.coins < STORE_TOY_COST) return false;
         state.coins -= STORE_TOY_COST;
         state.coinsSpent += STORE_TOY_COST;
         state.joy = clamp(state.joy + STORE_TOY_JOY, 0, JOY_MAX);
+        state.totalToysBought = (state.totalToysBought || 0) + 1;
         break;
       case "medicine":
         if (state.coins < STORE_MEDICINE_COST) return false;
@@ -255,6 +230,7 @@ export function createGameEngine({ storage, getTime, getSteps }) {
         state.coinsSpent += STORE_MEDICINE_COST;
         state.health = "normal";
         state.sickDayCount = 0;
+        state.totalMedicineBought = (state.totalMedicineBought || 0) + 1;
         break;
       default:
         return false;
@@ -273,8 +249,11 @@ export function createGameEngine({ storage, getTime, getSteps }) {
 
   function recalculateCoins() {
     const totalSteps = state.totalLifetimeSteps + state.todayStepCount;
-    const totalCoinsEarned = Math.floor(totalSteps / STEPS_PER_COIN);
-    state.coins = Math.max(0, totalCoinsEarned - state.coinsSpent);
+    state.coins = calculateRemainingCoins(
+      totalSteps,
+      state.coinsSpent,
+      STEPS_PER_COIN,
+    );
   }
 
   function save() {
@@ -287,8 +266,8 @@ export function createGameEngine({ storage, getTime, getSteps }) {
     const now = getTime();
     state.lastDecayTimestamp = now;
     state.lastSaveTimestamp = now;
-    state.lastStepDate = getTodayDate(getTime);
-    state.lastSicknessCheckDate = getTodayDate(getTime);
+    state.lastStepDate = formatDate(new Date(getTime()));
+    state.lastSicknessCheckDate = formatDate(new Date(getTime()));
     storage.save(state);
   }
 

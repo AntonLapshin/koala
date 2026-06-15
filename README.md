@@ -144,7 +144,7 @@ npm run test:watch    # Watch mode, re-runs on changes
 
 ### Interactions
 
-- **Tap the koala** — petting. Every 10 taps → +1 hunger, +1 joy. 100 taps cures sickness.
+- **Tap the koala** — petting. Every 30 taps → +1 hunger, +1 joy. 100 taps cures sickness.
 - **Shop buttons** (bottom bar) — Food (+30 hunger, 10 coins), Toy (+30 joy, 10 coins), Medicine (cure, 30 coins). Appear conditionally based on need.
 - **Heart icon** (top center) — click to buy medicine directly.
 
@@ -194,7 +194,7 @@ All tunable values are in `shared/constants.js`. Change them and re-run tests:
 | `JOY_DECAY_PER_HOUR_SICK` | 6 | Sick joy loss rate |
 | `STORE_FOOD_COST` | 10 | Coin cost for food |
 | `STORE_MEDICINE_COST` | 30 | Coin cost for medicine |
-| `PET_TAPS_FOR_BONUS` | 10 | Taps needed for +1/+1 bonus |
+| `PET_TAPS_FOR_BONUS` | 30 | Taps needed for +1/+1 bonus |
 | `SICK_PET_TAPS_TO_CURE` | 100 | Taps needed to cure sickness |
 | `DEATH_ZERO_STAT_HOURS` | 48 | Hours at zero before death |
 | `DAILY_SICKNESS_CHANCE` | 0.1 | Base daily sickness probability |

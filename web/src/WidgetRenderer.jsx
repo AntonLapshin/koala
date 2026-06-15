@@ -84,6 +84,7 @@ function renderTEXT(widget) {
 
 function renderFILL_RECT(widget) {
   const p = widget._props;
+  const hasClick = Boolean(widget._events.click);
   return (
     <div
       key={widget._id}
@@ -91,9 +92,17 @@ function renderFILL_RECT(widget) {
         ...baseStyle(p),
         backgroundColor: toCssColor(p.color),
         borderRadius: (p.radius || 0) + "px",
-        pointerEvents: "none",
+        pointerEvents: hasClick ? "auto" : "none",
+        cursor: hasClick ? "pointer" : "default",
         userSelect: "none",
       }}
+      onClick={
+        hasClick
+          ? () => {
+              widget._events.click.forEach((fn) => fn());
+            }
+          : undefined
+      }
     />
   );
 }
