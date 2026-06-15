@@ -142,8 +142,14 @@ export function createGameEngine({ storage, getTime, getSteps }) {
         const isStunted =
           state.hunger < STUNTED_HUNGER_THRESHOLD &&
           state.joy < STUNTED_JOY_THRESHOLD;
-        if (!isStunted && state.age < MAX_AGE) {
-          state.age = Math.min(state.age + 1, MAX_AGE);
+        if (!isStunted) {
+          if (state.age < MAX_AGE) {
+            state.age = state.age + 1;
+          } else {
+            state.health = "dead";
+            save();
+            break;
+          }
         }
       }
     }

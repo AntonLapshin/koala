@@ -127,16 +127,33 @@ Page({
     }
 
     if (isDead) {
+      const deathMsgW = 300;
+      const deathMsgH = 50;
+      const deathMsgX = Math.floor((width - deathMsgW) / 2);
+      const deathMsgY = Math.floor(height / 2) - 50;
+
+      _widgets.push(
+        hmUI.createWidget(hmUI.widget.FILL_RECT, {
+          x: deathMsgX,
+          y: deathMsgY,
+          w: deathMsgW,
+          h: deathMsgH,
+          radius: 14,
+          color: OVERLAY_COLOR,
+        }),
+      );
+
       _widgets.push(
         hmUI.createWidget(hmUI.widget.TEXT, {
-          x: 0,
-          y: Math.floor(height / 2) - 50,
-          w: width,
-          h: 40,
+          x: deathMsgX,
+          y: deathMsgY,
+          w: deathMsgW,
+          h: deathMsgH,
           text: "Your koala has passed away",
-          text_size: 24,
-          color: 0xf44336,
+          text_size: 22,
+          color: 0xffffff,
           align_h: hmUI.align.CENTER_H,
+          align_v: hmUI.align.CENTER_V,
         }),
       );
 
