@@ -22,11 +22,11 @@ import {
   DAILY_SICKNESS_CHANCE,
   NEGLECT_SICKNESS_CHANCE,
   DEATH_ZERO_STAT_SECONDS,
-} from './constants.js';
+} from "./constants.js";
 
 function getTodayDate(getTime) {
   const d = new Date(getTime());
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function randomEggIndex() {
@@ -37,20 +37,20 @@ function createDefaultState() {
   return {
     hunger: HUNGER_MAX,
     joy: JOY_MAX,
-    health: 'normal',
+    health: "normal",
     age: 0,
     eggIndex: randomEggIndex(),
     coins: 0,
     coinsSpent: 0,
     totalLifetimeSteps: 0,
     todayStepCount: 0,
-    lastStepDate: '',
+    lastStepDate: "",
     lastDecayTimestamp: 0,
     lastSaveTimestamp: 0,
     sickDayCount: 0,
     tapCounter: 0,
     zeroStatSeconds: 0,
-    lastSicknessCheckDate: '',
+    lastSicknessCheckDate: "",
   };
 }
 
@@ -63,7 +63,7 @@ export function createGameEngine({ storage, getTime, getSteps }) {
 
   function init() {
     const saved = storage.load();
-    if (saved && typeof saved === 'object' && saved.lastSaveTimestamp != null) {
+    if (saved && typeof saved === "object" && saved.lastSaveTimestamp != null) {
       state = saved;
       if (state.zeroStatHours !== undefined) {
         state.zeroStatSeconds = state.zeroStatHours;
@@ -92,7 +92,7 @@ export function createGameEngine({ storage, getTime, getSteps }) {
   }
 
   function applyTimeDecay() {
-    if (state.health === 'dead') return;
+    if (state.health === "dead") return;
 
     const elapsedMs = getTime() - state.lastDecayTimestamp;
     const elapsedSeconds = elapsedMs / 1000;
@@ -108,10 +108,19 @@ export function createGameEngine({ storage, getTime, getSteps }) {
 
     checkSicknessToday(todayDate);
 
-    const hungerRate = (state.health === 'sick' ? HUNGER_DECAY_PER_HOUR_SICK : HUNGER_DECAY_PER_HOUR) / 3600;
-    const joyRate = (state.health === 'sick' ? JOY_DECAY_PER_HOUR_SICK : JOY_DECAY_PER_HOUR) / 3600;
+    const hungerRate =
+      (state.health === "sick"
+        ? HUNGER_DECAY_PER_HOUR_SICK
+        : HUNGER_DECAY_PER_HOUR) / 3600;
+    const joyRate =
+      (state.health === "sick" ? JOY_DECAY_PER_HOUR_SICK : JOY_DECAY_PER_HOUR) /
+      3600;
 
-    state.hunger = clamp(state.hunger - hungerRate * elapsedSeconds, 0, HUNGER_MAX);
+    state.hunger = clamp(
+      state.hunger - hungerRate * elapsedSeconds,
+      0,
+      HUNGER_MAX,
+    );
     state.joy = clamp(state.joy - joyRate * elapsedSeconds, 0, JOY_MAX);
 
     state.lastDecayTimestamp = getTime();
@@ -122,15 +131,17 @@ export function createGameEngine({ storage, getTime, getSteps }) {
 
   function handleDailyReset(todayDate, prevDate) {
     const daysElapsed = Math.floor(
-      (new Date(todayDate).getTime() - new Date(prevDate).getTime()) / (1000 * 60 * 60 * 24)
+      (new Date(todayDate).getTime() - new Date(prevDate).getTime()) /
+        (1000 * 60 * 60 * 24),
     );
 
     for (let d = 0; d < daysElapsed; d++) {
-      if (state.health === 'sick') {
+      if (state.health === "sick") {
         state.sickDayCount += 1;
       } else {
         const isStunted =
-          state.hunger < STUNTED_HUNGER_THRESHOLD && state.joy < STUNTED_JOY_THRESHOLD;
+          state.hunger < STUNTED_HUNGER_THRESHOLD &&
+          state.joy < STUNTED_JOY_THRESHOLD;
         if (!isStunted && state.age < MAX_AGE) {
           state.age = Math.min(state.age + 1, MAX_AGE);
         }
@@ -149,14 +160,16 @@ export function createGameEngine({ storage, getTime, getSteps }) {
 
     state.lastSicknessCheckDate = todayDate;
 
-    if (state.health === 'sick') return;
+    if (state.health === "sick") return;
 
     const isNeglected =
       state.hunger < NEGLECT_THRESHOLD || state.joy < NEGLECT_THRESHOLD;
-    const chance = isNeglected ? NEGLECT_SICKNESS_CHANCE : DAILY_SICKNESS_CHANCE;
+    const chance = isNeglected
+      ? NEGLECT_SICKNESS_CHANCE
+      : DAILY_SICKNESS_CHANCE;
 
     if (Math.random() < chance) {
-      state.health = 'sick';
+      state.health = "sick";
       state.sickDayCount = 0;
     }
   }
@@ -171,7 +184,7 @@ export function createGameEngine({ storage, getTime, getSteps }) {
 
   function checkDeath() {
     if (state.zeroStatSeconds >= DEATH_ZERO_STAT_SECONDS) {
-      state.health = 'dead';
+      state.health = "dead";
       save();
     }
   }
@@ -196,13 +209,13 @@ export function createGameEngine({ storage, getTime, getSteps }) {
   }
 
   function pet() {
-    if (state.health === 'dead') return;
+    if (state.health === "dead") return;
 
     state.tapCounter += 1;
 
-    if (state.health === 'sick') {
+    if (state.health === "sick") {
       if (state.tapCounter >= SICK_PET_TAPS_TO_CURE) {
-        state.health = 'normal';
+        state.health = "normal";
         state.sickDayCount = 0;
         state.tapCounter = 0;
       }
@@ -216,26 +229,26 @@ export function createGameEngine({ storage, getTime, getSteps }) {
   }
 
   function buy(item) {
-    if (state.health === 'dead') return false;
+    if (state.health === "dead") return false;
 
     switch (item) {
-      case 'food':
+      case "food":
         if (state.coins < STORE_FOOD_COST) return false;
         state.coins -= STORE_FOOD_COST;
         state.coinsSpent += STORE_FOOD_COST;
         state.hunger = clamp(state.hunger + STORE_FOOD_HUNGER, 0, HUNGER_MAX);
         break;
-      case 'toy':
+      case "toy":
         if (state.coins < STORE_TOY_COST) return false;
         state.coins -= STORE_TOY_COST;
         state.coinsSpent += STORE_TOY_COST;
         state.joy = clamp(state.joy + STORE_TOY_JOY, 0, JOY_MAX);
         break;
-      case 'medicine':
+      case "medicine":
         if (state.coins < STORE_MEDICINE_COST) return false;
         state.coins -= STORE_MEDICINE_COST;
         state.coinsSpent += STORE_MEDICINE_COST;
-        state.health = 'normal';
+        state.health = "normal";
         state.sickDayCount = 0;
         break;
       default:
@@ -275,7 +288,7 @@ export function createGameEngine({ storage, getTime, getSteps }) {
   }
 
   function tick(hours) {
-    if (state.health === 'dead') return;
+    if (state.health === "dead") return;
     applyTimeDecay();
     syncSteps();
   }

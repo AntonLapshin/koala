@@ -17,3 +17,5 @@ export const stepsAdapter = {
     manualSteps = 0;
   },
 };
+
+export const sensorAdapter = stepsAdapter;

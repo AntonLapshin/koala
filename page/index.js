@@ -6,6 +6,7 @@ import { storageAdapter } from "../utils/storageAdapter.js";
 import { sensorAdapter } from "../utils/sensorAdapter.js";
 import { timeAdapter } from "../utils/timeAdapter.js";
 import { Vibrator } from "@zos/sensor";
+import { setEngine } from "../shared/engineRegistry.js";
 
 let engine = null;
 let _vib = null;
@@ -58,6 +59,7 @@ Page({
       getTime: timeAdapter.getTime,
       getSteps: sensorAdapter.getSteps,
     });
+    setEngine(engine);
     engine.init();
     startTickTimer(this);
     this.render();
@@ -228,7 +230,7 @@ Page({
       }),
     );
 
-    const heartX = Math.floor((width - 48) / 2);
+    const heartX = Math.floor((width - 52) / 2);
     const heartImg = hmUI.createWidget(hmUI.widget.IMG, {
       x: heartX,
       y: 10,

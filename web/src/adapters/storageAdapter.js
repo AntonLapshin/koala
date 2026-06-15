@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'koala_state';
+const STORAGE_KEY = "koala_state";
 
 export const storageAdapter = {
   load() {

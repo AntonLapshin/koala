@@ -9,22 +9,29 @@ A Tamagotchi-style virtual pet game for the Amazfit Bip 6 smartwatch. Raise a ko
  │  web/        │     │  shared/         │     │  watch/      │
  │  (React)     │────▶│  (pure JS)       │◀────│  (Zepp OS)   │
  │  Vite + CSS  │     │  game engine     │     │  @zos/*      │
- │  Modules     │     │  + constants     │     │  hmUI        │
- └─────────────┘     └──────────────────┘     └─────────────┘
-                             │
-                      ┌──────┴──────┐
-                      │  vitest     │
-                      │  19 tests   │
-                      └─────────────┘
+ │              │     │  + constants     │     │  hmUI        │
+ └──────┬───────┘     └──────────────────┘     └──────┬───────┘
+        │                                             │
+        │    ┌─────────────────────┐                  │
+        └───▶│  page/index.js      │◀─────────────────┘
+             │  (single UI source) │
+             └─────────────────────┘
+                      │
+               ┌──────┴──────┐
+               │  vitest     │
+               │  19 tests   │
+               └─────────────┘
 ```
 
-**`shared/`** is the single source of truth. It's pure JavaScript with zero dependencies — importable by both the React web wrapper and the Zepp OS watch app. Each platform provides its own adapter implementations for storage, time, and step counting.
+**`page/index.js`** is the single source of truth for the UI. It uses Zepp OS's `hmUI` widget API — the web wrapper runs the exact same file by providing React-based shim implementations of `@zos/ui`, `@zos/sensor`, and `@zos/fs`. Each platform provides its own adapter implementations for storage, time, and step counting.
 
 | Capability | Web Adapter | Watch Adapter |
 |---|---|---|
-| Persistence | `localStorage` | `@zos/storage` |
+| Persistence | `localStorage` | `@zos/fs` |
 | Time | `Date.now()` + debug offset | `Date.now()` |
-| Steps | Manual input | `@zos/sensor` |
+| Steps | Manual counter | `@zos/sensor` |
+| UI (`hmUI`) | React shim (`web/src/hmUI.js` + `WidgetRenderer.jsx`) | `@zos/ui` |
+| Sensor (`Vibrator`) | No-op shim (`web/src/zos-sensor.js`) | `@zos/sensor` |
 
 ## Project Structure
 
@@ -37,24 +44,26 @@ koala-tamagotchi/
 │
 ├── web/                               # React dev wrapper (browser)
 │   ├── index.html
-│   ├── vite.config.js
+│   ├── vite.config.mjs                # Vite + plugin for @zos/* → web shims
 │   ├── package.json
 │   └── src/
-│       ├── main.jsx                   # Entry point
-│       ├── App.jsx                    # Main UI — overlaid watch layout
-│       ├── App.module.css             # 390x450 viewport styles
-│       ├── hooks/
-│       │   └── useGameLoop.js         # Engine ↔ React state bridge
+│       ├── main.jsx                   # Entry: sets Page global, dyn-imports page/index.js
+│       ├── WatchPage.jsx              # Page() global provider + React render loop
+│       ├── hmUI.js                    # React-compatible hmUI shim (createWidget, etc.)
+│       ├── WidgetRenderer.jsx         # Maps hmUI widget descriptors → React elements
+│       ├── zos-sensor.js             # No-op Vibrator + Step shim
+│       ├── zos-fs.js                 # No-op @zos/fs shim
+│       ├── constants.js               # Device dimensions (390×450)
 │       ├── adapters/
 │       │   ├── storageAdapter.js      # localStorage wrapper
 │       │   ├── timeAdapter.js         # Date.now() + debug offset
-│       │   └── stepsAdapter.js        # Manual step counter
+│       │   └── stepsAdapter.js        # Manual step counter (exports as sensorAdapter too)
 │       └── components/
 │           ├── DebugPanel.jsx         # Simulate steps/time, reset
 │           └── DebugPanel.module.css
 │
-├── page/                              # Zepp OS watch pages
-│   ├── index.js                       # Main game screen
+├── page/                              # Zepp OS watch pages (also run by web)
+│   ├── index.js                       # Main game screen — single UI source
 │   └── index.style.js
 │
 ├── utils/                             # Zepp OS adapters
@@ -194,8 +203,8 @@ All tunable values are in `shared/constants.js`. Change them and re-run tests:
 ### Adding Features
 
 1. **Game logic changes** → edit `shared/gameEngine.js`, add tests to `shared/gameEngine.test.js`, run `npm test`.
-2. **Web UI changes** → edit `web/src/App.jsx` and `web/src/App.module.css`. The React wrapper is a flat layout — all elements are absolutely positioned over the watch viewport.
-3. **Watch UI changes** → edit `page/index.js`. Uses `hmUI` widget API (`@zos/ui`). Coordinates are pixel-based for the Bip 6's 390×450 screen.
+2. **UI changes** → edit `page/index.js`. This is the single UI source used by both watch and web. Uses `hmUI` widget API (`@zos/ui`). Coordinates are pixel-based for the 390×450 screen.
+3. **Web adapter changes** → edit files in `web/src/`. The `hmUI.js` shim captures widget creation calls during render; `WidgetRenderer.jsx` maps them to React elements; `vite.config.mjs` redirects `@zos/*` imports and watch `../utils/*` imports to web equivalents via `resolveId` + `load` hooks.
 
 ### Debug Panel Tricks
 
@@ -243,7 +252,18 @@ The watch app loads the shared engine from `shared/gameEngine.js` via relative i
 import { createGameEngine } from '../../shared/gameEngine.js';
 ```
 
-**Important**: Zepp OS modules (`@zos/storage`, `@zos/sensor`, `@zos/ui`) are NOT available in the web wrapper. This is why adapters exist — the web provides mock implementations in `web/src/adapters/`.
+### Web Wrapper Architecture
+
+The web wrapper runs `page/index.js` directly — no separate UI implementation. The Vite config (`web/vite.config.mjs`) includes a custom plugin that:
+
+- **`resolveId`** redirects bare Zepp OS imports (`@zos/ui`, `@zos/sensor`, `@zos/fs`) to React-based shims under `web/src/`
+- **`load`** intercepts the watch adapter files (`../utils/storageAdapter.js`, etc.) and returns re-export code pointing at the canonical web adapter modules — ensuring both `page/index.js` and the DebugPanel share the same singleton instances
+
+The render loop works as follows:
+1. `page/index.js` calls `render()` → `hmUI.createWidget()` N times (captured into a module-level array)
+2. `WatchPage.jsx` collects the array, maps each widget descriptor through `WidgetRenderer.jsx` to a React element
+3. `setState()` triggers React reconciliation, producing the 390×450 watch viewport
+4. Click handlers and the tick timer call `render()` again, repeating the cycle
 
 ### Testing
 
