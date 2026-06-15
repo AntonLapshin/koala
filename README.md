@@ -1,4 +1,4 @@
-# Koala Walk
+# Koala
 
 A Tamagotchi-style virtual pet game for the Amazfit Bip 6 smartwatch. Raise a koala by walking (steps → coins) or tapping (petting), feed it, play with it, and keep it healthy through a 30-day lifecycle. Runs on the watch via Zepp OS, with a React web wrapper for local development and testing.
 

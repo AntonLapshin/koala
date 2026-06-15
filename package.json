@@ -10,6 +10,10 @@
     "lint": "npx -y prettier --check shared/ web/src/"
   },
   "devDependencies": {
+    "@zeppos/device-types": "^3.0.0",
     "vitest": "^2.1.0"
+  },
+  "dependencies": {
+    "@zeppos/zml": "^0.0.38"
   }
 }

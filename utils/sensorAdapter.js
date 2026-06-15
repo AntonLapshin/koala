@@ -1,11 +1,22 @@
-import { Sensor } from '@zos/sensor';
+import { Step } from '@zos/sensor';
 
-const sensor = new Sensor();
+let _step = null;
+
+function getSensor() {
+  if (!_step) {
+    try {
+      _step = new Step();
+    } catch (e) {
+      _step = { getCurrent() { return 0; } };
+    }
+  }
+  return _step;
+}
 
 export const sensorAdapter = {
   getSteps() {
     try {
-      return sensor.getStepCount() || 0;
+      return getSensor().getCurrent() || 0;
     } catch (e) {
       return 0;
     }

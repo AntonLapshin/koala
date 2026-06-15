@@ -1,11 +1,12 @@
+import { setStatusBarVisible } from '@zos/ui';
+
 App({
   globalData: {},
 
   onCreate() {
-    // App initialized
+    setStatusBarVisible(false);
   },
 
   onDestroy() {
-    // Clean up
   },
 });

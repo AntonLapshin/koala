@@ -2,7 +2,7 @@
   "configVersion": "v3",
   "app": {
     "appId": 20001,
-    "appName": "Koala Walk",
+    "appName": "Koala",
     "appType": "app",
     "version": {
       "code": 1,
@@ -14,25 +14,21 @@
   },
   "permissions": [
     "data:os.device.info",
-    "data:system.sensor",
-    "data:os.storage",
-    "data:os.vibrate"
+    "device:os.local_storage",
+    "data:user.hd.step"
   ],
   "runtime": {
     "apiVersion": {
-      "compatible": "3.0",
-      "target": "3.0",
-      "minVersion": "3.0"
+      "compatible": "4.0",
+      "target": "4.0",
+      "minVersion": "4.0"
     }
   },
   "targets": {
     "default": {
       "module": {
         "page": {
-          "pages": [
-            "page/index",
-            "page/store"
-          ]
+          "pages": ["page/index", "page/store"]
         }
       },
       "platforms": [
@@ -43,10 +39,6 @@
         {
           "st": "s",
           "dw": 390
-        },
-        {
-          "st": "b",
-          "dw": 194
         }
       ],
       "designWidth": 480
@@ -54,7 +46,7 @@
   },
   "i18n": {
     "en-US": {
-      "appName": "Koala Walk"
+      "appName": "Koala"
     }
   },
   "defaultLanguage": "en-US"

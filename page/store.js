@@ -1,9 +1,20 @@
+import hmUI from '@zos/ui';
+import { DEVICE_WIDTH, DEVICE_HEIGHT } from '../utils/constants.js';
 import { createGameEngine } from '../shared/gameEngine.js';
 import { storageAdapter } from '../utils/storageAdapter.js';
 import { sensorAdapter } from '../utils/sensorAdapter.js';
 import { timeAdapter } from '../utils/timeAdapter.js';
+import { Vibrator } from '@zos/sensor';
 
 let engine = null;
+let _vib = null;
+let _widgets = [];
+function vibrate() {
+  if (!_vib) {
+    try { _vib = new Vibrator(); } catch (e) { _vib = { start() {} }; }
+  }
+  try { _vib.start(); } catch (e) {}
+}
 
 Page({
   build() {
@@ -19,41 +30,42 @@ Page({
 
   render() {
     const state = engine.getState();
-    const { width, height } = hmSetting.getDeviceInfo();
+    const { width, height } = { width: DEVICE_WIDTH, height: DEVICE_HEIGHT };
 
-    hmUI.clear();
+    _widgets.forEach(w => hmUI.deleteWidget(w));
+    _widgets = [];
 
-    hmUI.createWidget(hmUI.widget.IMG, {
+    _widgets.push(hmUI.createWidget(hmUI.widget.IMG, {
       x: 0,
       y: 0,
       w: width,
       h: height,
-      src: 'assets/bg.png',
-    });
+      src: 'bg.png',
+    }));
 
-    hmUI.createWidget(hmUI.widget.TEXT, {
+    _widgets.push(hmUI.createWidget(hmUI.widget.TEXT, {
       x: 0,
       y: 20,
       w: width,
-      h: 40,
+      h: 44,
       text: 'Store',
-      text_size: 24,
+      text_size: 30,
       color: 0xffffff,
       align_h: hmUI.align.CENTER_H,
-    });
+    }));
 
-    hmUI.createWidget(hmUI.widget.TEXT, {
+    _widgets.push(hmUI.createWidget(hmUI.widget.TEXT, {
       x: 0,
-      y: 60,
+      y: 68,
       w: width,
-      h: 30,
+      h: 32,
       text: `Leaves: ${state.coins}`,
-      text_size: 18,
+      text_size: 24,
       color: 0x4caf50,
       align_h: hmUI.align.CENTER_H,
-    });
+    }));
 
-    const itemY = 110;
+    const itemY = 120;
     const itemH = 80;
     const itemGap = 20;
     const margin = 20;
@@ -81,41 +93,43 @@ Page({
 
     items.forEach((item, i) => {
       const y = itemY + i * (itemH + itemGap);
-      hmUI.createWidget(hmUI.widget.BUTTON, {
+      _widgets.push(hmUI.createWidget(hmUI.widget.BUTTON, {
         x: margin,
         y,
         w: width - margin * 2,
         h: itemH,
         text: `${item.label}\n${item.cost}`,
         radius: 12,
-        color: item.color,
-        text_size: 16,
+        color: 0xffffff,
+        normal_color: item.color,
+        text_size: 20,
         press_color: 0x222222,
         click_func: () => {
           if (engine.buy(item.item)) {
-            hmUI.vibrate({ type: 'short' });
+            vibrate();
             this.render();
           } else {
-            hmUI.vibrate({ type: 'short' });
-            hmUI.vibrate({ type: 'short' });
+            vibrate();
+            vibrate();
           }
         },
-      });
+      }));
     });
 
-    hmUI.createWidget(hmUI.widget.BUTTON, {
+    _widgets.push(hmUI.createWidget(hmUI.widget.BUTTON, {
       x: margin,
       y: height - 60,
       w: width - margin * 2,
       h: 44,
       text: 'Back',
       radius: 8,
-      color: 0x666666,
-      text_size: 16,
+      color: 0xffffff,
+      normal_color: 0x666666,
+      text_size: 22,
       press_color: 0x444444,
       click_func: () => {
-        hmApp.gotoPage({ url: 'page/index' });
+        try { hmApp.gotoPage({ url: 'page/index' }); } catch (e) {}
       },
-    });
+    }));
   },
 });
