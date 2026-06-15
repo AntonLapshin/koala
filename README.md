@@ -55,9 +55,7 @@ koala-tamagotchi/
 │
 ├── page/                              # Zepp OS watch pages
 │   ├── index.js                       # Main game screen
-│   ├── index.style.js
-│   ├── store.js                       # Store page
-│   └── store.style.js
+│   └── index.style.js
 │
 ├── utils/                             # Zepp OS adapters
 │   ├── storageAdapter.js              # @zos/storage wrapper
@@ -138,7 +136,7 @@ npm run test:watch    # Watch mode, re-runs on changes
 ### Interactions
 
 - **Tap the koala** — petting. Every 10 taps → +1 hunger, +1 joy. 100 taps cures sickness.
-- **Store buttons** — Food (+30 hunger, 10 coins), Toy (+30 joy, 10 coins), Medicine (cure, 30 coins).
+- **Shop buttons** (bottom bar) — Food (+30 hunger, 10 coins), Toy (+30 joy, 10 coins), Medicine (cure, 30 coins). Appear conditionally based on need.
 - **Heart icon** (top center) — click to buy medicine directly.
 
 ### Death

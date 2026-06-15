@@ -28,7 +28,7 @@
     "default": {
       "module": {
         "page": {
-          "pages": ["page/index", "page/store"]
+          "pages": ["page/index"]
         }
       },
       "platforms": [
