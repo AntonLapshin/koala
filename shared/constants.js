@@ -33,3 +33,5 @@ export const CRITICAL_JOY_THRESHOLD = 20;
 export const NOTIFY_COOLDOWN_MS = 300000;
 
 export const TICK_INTERVAL_MS = 5000;
+
+export const RESCUE_CHANCE_PER_HOUR = 0.1;

@@ -1,8 +1,8 @@
 {
   "configVersion": "v3",
   "app": {
-    "appId": 20001,
-    "appName": "Koala",
+    "appId": 20002,
+    "appName": "Koala Dev",
     "appType": "app",
     "version": {
       "code": 1,
@@ -46,7 +46,7 @@
   },
   "i18n": {
     "en-US": {
-      "appName": "Koala"
+      "appName": "Koala Dev"
     }
   },
   "defaultLanguage": "en-US"

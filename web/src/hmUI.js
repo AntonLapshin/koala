@@ -6,6 +6,7 @@ export const widget = {
   TEXT: "TEXT",
   FILL_RECT: "FILL_RECT",
   BUTTON: "BUTTON",
+  GESTURE: "GESTURE",
 };
 
 export const align = {
@@ -19,6 +20,8 @@ export const align = {
 
 export const event = {
   CLICK_DOWN: "click",
+  SWIPE_LEFT: "swipeLeft",
+  SWIPE_RIGHT: "swipeRight",
 };
 
 function makeWidget(type, props) {

@@ -27,6 +27,10 @@ import { clamp } from "../utils/clamp.js";
 import { formatDate } from "../utils/formatDate.js";
 import { createDefaultState } from "../utils/createDefaultState.js";
 import { calculateRemainingCoins } from "../utils/calculateCoins.js";
+import {
+  checkForRescue,
+  recordRescue as doRecordRescue,
+} from "./rescueEngine.js";
 
 export function createGameEngine({ storage, getTime, getSteps }) {
   let state = null;
@@ -45,6 +49,10 @@ export function createGameEngine({ storage, getTime, getSteps }) {
       if (state.totalFoodBought == null) state.totalFoodBought = 0;
       if (state.totalToysBought == null) state.totalToysBought = 0;
       if (state.totalMedicineBought == null) state.totalMedicineBought = 0;
+      if (state.rescueCount == null) state.rescueCount = 0;
+      if (state.lastRescueCheckHour == null) state.lastRescueCheckHour = "";
+      if (state.rescuePending == null) state.rescuePending = false;
+      if (state.rescueSceneIndex == null) state.rescueSceneIndex = 0;
       applyTimeDecay();
     } else {
       state = createDefaultState();
@@ -277,6 +285,14 @@ export function createGameEngine({ storage, getTime, getSteps }) {
     syncSteps();
   }
 
+  function checkRescue(nowMs) {
+    return checkForRescue(state, nowMs);
+  }
+
+  function recordRescue() {
+    doRecordRescue(state);
+  }
+
   return {
     init,
     resume,
@@ -287,5 +303,7 @@ export function createGameEngine({ storage, getTime, getSteps }) {
     save,
     reset,
     tick,
+    checkRescue,
+    recordRescue,
   };
 }

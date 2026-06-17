@@ -22,5 +22,9 @@ export function createDefaultState() {
     totalFoodBought: 0,
     totalToysBought: 0,
     totalMedicineBought: 0,
+    rescueCount: 0,
+    lastRescueCheckHour: "",
+    rescuePending: false,
+    rescueSceneIndex: 0,
   };
 }

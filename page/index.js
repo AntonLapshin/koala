@@ -22,6 +22,7 @@ import { getHeartSrc } from "../utils/getHeartSrc.js";
 import { getBgSrc } from "../utils/getBgSrc.js";
 import { isCriticalStatus } from "../utils/isCriticalStatus.js";
 import { getNotificationMessage } from "../utils/getNotificationMessage.js";
+import { renderRescueScreen } from "./rescue.js";
 
 let engine = null;
 let _vib = null;
@@ -31,6 +32,8 @@ let _lastNotifyTime = 0;
 let _showNotify = false;
 let _notifyMessage = "";
 let _showStats = false;
+let _showRescue = false;
+let _justRescued = false;
 let _page = null;
 
 function startTickTimer(page) {
@@ -147,6 +150,16 @@ function addProgressBar(x, y, value) {
       h: 22,
       color: 0xffffff,
       radius: 4,
+    }),
+  );
+  _widgets.push(
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: x + 3,
+      y: y + 2,
+      w: 56,
+      h: 18,
+      color: 0xdddddd,
+      radius: 3,
     }),
   );
   _widgets.push(
@@ -323,6 +336,32 @@ Page({
       return;
     }
 
+    if (_showRescue) {
+      const rescueResult = engine.checkRescue(nowMs);
+      renderRescueScreen(
+        _widgets,
+        state,
+        rescueResult,
+        _justRescued,
+        width,
+        height,
+        {
+          onBack: () => {
+            _showRescue = false;
+            _justRescued = false;
+            this.render();
+          },
+          onRescue: () => {
+            engine.recordRescue();
+            engine.save();
+            _justRescued = true;
+            this.render();
+          },
+        },
+      );
+      return;
+    }
+
     _widgets.push(
       hmUI.createWidget(hmUI.widget.IMG, {
         x: 0,
@@ -417,6 +456,8 @@ Page({
           click_func: () => {
             engine.reset();
             _showStats = false;
+            _showRescue = false;
+            _justRescued = false;
             _showNotify = false;
             _lastNotifyTime = 0;
             this.render();
@@ -544,10 +585,57 @@ Page({
     });
     _widgets.push(ageBtn);
 
+    const rescueBgX = 8;
+    const rescueY = Math.floor(height / 2) - 32;
+    const rescueBgW = 86;
+    const rescueBgH = 90;
+
+    const rescueBg = hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: rescueBgX,
+      y: rescueY,
+      w: rescueBgW,
+      h: rescueBgH,
+      radius: 14,
+      color: OVERLAY_COLOR,
+    });
+    rescueBg.addEventListener(hmUI.event.CLICK_DOWN, () => {
+      _showRescue = true;
+      _justRescued = false;
+      this.render();
+    });
+    _widgets.push(rescueBg);
+
+    const rescueIcon = hmUI.createWidget(hmUI.widget.IMG, {
+      x: rescueBgX + 19,
+      y: rescueY + 6,
+      w: 48,
+      h: 48,
+      src: "ui/rescue.png",
+    });
+    rescueIcon.addEventListener(hmUI.event.CLICK_DOWN, () => {
+      _showRescue = true;
+      _justRescued = false;
+      this.render();
+    });
+    _widgets.push(rescueIcon);
+
+    _widgets.push(
+      hmUI.createWidget(hmUI.widget.TEXT, {
+        x: rescueBgX,
+        y: Math.floor(height / 2) + 24,
+        w: rescueBgW,
+        h: 28,
+        text: `${state.rescueCount || 0}`,
+        text_size: 24,
+        color: 0xffffff,
+        align_h: hmUI.align.CENTER_H,
+      }),
+    );
+
     _widgets.push(
       hmUI.createWidget(hmUI.widget.FILL_RECT, {
         x: width - 94,
-        y: Math.floor(height / 2) - 32,
+        y: rescueY,
         w: 82,
         h: 86,
         radius: 14,
@@ -576,7 +664,7 @@ Page({
       }),
     );
 
-    const tapGoal = isSick ? 100 : 10;
+    const tapGoal = isSick ? 100 : 30;
     if (state.tapCounter > 0 || isSick) {
       _widgets.push(
         hmUI.createWidget(hmUI.widget.TEXT, {

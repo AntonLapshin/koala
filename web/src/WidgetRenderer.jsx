@@ -1,3 +1,5 @@
+import React, { useRef, useCallback } from "react";
+
 function toCssColor(c) {
   const a = (c >>> 24) & 0xff;
   const r = (c >>> 16) & 0xff;
@@ -140,11 +142,67 @@ function renderBUTTON(widget) {
   );
 }
 
+function GestureWidget({ widget }) {
+  const touchRef = useRef({ startX: 0, startY: 0, startTime: 0 });
+  const p = widget._props;
+
+  const handleTouchStart = useCallback((e) => {
+    const t = e.touches[0];
+    touchRef.current = {
+      startX: t.clientX,
+      startY: t.clientY,
+      startTime: Date.now(),
+    };
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e) => {
+      const t = e.changedTouches[0];
+      const { startX, startY, startTime } = touchRef.current;
+      const deltaX = t.clientX - startX;
+      const deltaY = t.clientY - startY;
+      const deltaTime = Date.now() - startTime;
+
+      if (deltaTime > 500) return;
+
+      const absDx = Math.abs(deltaX);
+      const absDy = Math.abs(deltaY);
+
+      if (absDx < 40 || absDx < absDy) return;
+
+      if (deltaX < 0 && widget._events.swipeLeft) {
+        widget._events.swipeLeft.forEach((fn) => fn());
+      } else if (deltaX > 0 && widget._events.swipeRight) {
+        widget._events.swipeRight.forEach((fn) => fn());
+      }
+    },
+    [widget._events.swipeLeft, widget._events.swipeRight],
+  );
+
+  return (
+    <div
+      key={widget._id}
+      style={{
+        ...baseStyle(p),
+        touchAction: "none",
+        pointerEvents: "auto",
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    />
+  );
+}
+
+function renderGESTURE(widget) {
+  return <GestureWidget key={widget._id} widget={widget} />;
+}
+
 const renderers = {
   IMG: renderIMG,
   TEXT: renderTEXT,
   FILL_RECT: renderFILL_RECT,
   BUTTON: renderBUTTON,
+  GESTURE: renderGESTURE,
 };
 
 export function renderWidget(w) {
