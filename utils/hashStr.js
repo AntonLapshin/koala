@@ -3,5 +3,8 @@ export function hashStr(str) {
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
   }
+  if (str.length > 0) {
+    hash = Math.imul(hash, 1103515245) + 12345;
+  }
   return Math.abs(hash);
 }

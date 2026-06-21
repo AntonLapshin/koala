@@ -88,8 +88,8 @@ function addRectWrapper(x, y, w, h, clickHandler) {
 function addStoreItem(x, y, w, h, iconSrc, price, clickHandler) {
   addRectWrapper(x, y, w, h, clickHandler);
 
-  const iconSize = 28;
-  const coinSize = 14;
+  const iconSize = 48;
+  const coinSize = 48;
   const textW = 30;
   const gap = 8;
   const totalW = iconSize + gap + textW + gap + coinSize;
@@ -372,7 +372,7 @@ Page({
       }),
     );
 
-    if (weather === "rain") {
+    if (weather === "rain" && timeOfDay === "day") {
       _widgets.push(
         hmUI.createWidget(hmUI.widget.IMG, {
           x: 0,
@@ -590,20 +590,22 @@ Page({
     const rescueBgW = 86;
     const rescueBgH = 90;
 
-    const rescueBg = hmUI.createWidget(hmUI.widget.FILL_RECT, {
-      x: rescueBgX,
-      y: rescueY,
-      w: rescueBgW,
-      h: rescueBgH,
-      radius: 14,
-      color: OVERLAY_COLOR,
-    });
-    rescueBg.addEventListener(hmUI.event.CLICK_DOWN, () => {
+    const onRescueTap = () => {
       _showRescue = true;
       _justRescued = false;
       this.render();
-    });
-    _widgets.push(rescueBg);
+    };
+
+    _widgets.push(
+      hmUI.createWidget(hmUI.widget.FILL_RECT, {
+        x: rescueBgX,
+        y: rescueY,
+        w: rescueBgW,
+        h: rescueBgH,
+        radius: 14,
+        color: OVERLAY_COLOR,
+      }),
+    );
 
     const rescueIcon = hmUI.createWidget(hmUI.widget.IMG, {
       x: rescueBgX + 19,
@@ -612,11 +614,7 @@ Page({
       h: 48,
       src: "ui/rescue.png",
     });
-    rescueIcon.addEventListener(hmUI.event.CLICK_DOWN, () => {
-      _showRescue = true;
-      _justRescued = false;
-      this.render();
-    });
+    rescueIcon.addEventListener(hmUI.event.CLICK_DOWN, onRescueTap);
     _widgets.push(rescueIcon);
 
     _widgets.push(
