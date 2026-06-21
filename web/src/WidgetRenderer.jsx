@@ -42,7 +42,7 @@ function renderIMG(widget) {
   return (
     <img
       key={widget._id}
-      src={"/images/" + p.src}
+      src={import.meta.env.BASE_URL + "images/" + p.src}
       alt=""
       style={{
         ...baseStyle(p),
